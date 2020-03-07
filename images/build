@@ -1,0 +1,33 @@
+#!/usr/bin/env julia
+
+const tag = "juliaplots/makie-images"
+
+# process arguments
+const builds = if length(ARGS) == 0
+    # rebuild everything
+    readdir(@__DIR__)
+else
+    ARGS
+end
+
+bases = ["1.2", "1.3", "1.4"]
+
+for base in bases
+    base_path = joinpath(@__DIR__, "base", base)
+    base_tag = "juliagpu/julia:$base"
+
+    if base in builds
+        run(`docker build --pull --no-cache $base_path --tag $base_tag`)
+        run(`docker push $base_tag`)
+    end
+
+    for derived in builds
+        derived_path = joinpath(@__DIR__, derived)
+        derived_tag = "$tag:$base-$derived"
+
+        if base in builds || derived in builds
+            run(`docker build --pull --build-arg base=$base $derived_path --tag $derived_tag`)
+            run(`docker push $derived_tag`)
+        end
+    end
+end
